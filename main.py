@@ -25,6 +25,7 @@ def timing(f):
         return result
     return wrap
 
+#Processes the given image
 def processImage(image):
     darkened = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)[...,2]*0.8
     _, thresholded = cv2.threshold(darkened, 130, 255, cv2.THRESH_BINARY_INV)
@@ -36,10 +37,12 @@ def processImage(image):
 
     return cv2.cvtColor(np.uint8(eroded), cv2.COLOR_BGR2RGB)
 
+#Processes the text to remove stray characters
 def processText(input):
     matches = re.findall(r'[-+]?\d*\.?\d+|\d+', input)
     return ''.join(matches)
 
+#Performs OCR on the given image
 def ocrImage(image, time=False):
     addedBorder = cv2.copyMakeBorder(image, 25, 25, 25, 25, cv2.BORDER_REPLICATE)
     ocrResult = pytesseract.image_to_string(addedBorder, "digits", config='--psm 6')
@@ -56,6 +59,7 @@ def ocrImage(image, time=False):
 
     return processText(ocrResult)
 
+#Extracts speed, altitude, and time from the image
 def getTelemetry(image, bounds):
     speedCrop = image[bounds[0][0][1]:bounds[0][0][1]+(bounds[0][1][1] - bounds[0][0][1]), bounds[0][0][0]:bounds[0][0][0]+(bounds[0][1][0] - bounds[0][0][0])]
     altCrop = image[bounds[1][0][1]:bounds[1][0][1]+(bounds[1][1][1] - bounds[1][0][1]), bounds[1][0][0]:bounds[1][0][0]+(bounds[1][1][0] - bounds[1][0][0])]
@@ -63,6 +67,7 @@ def getTelemetry(image, bounds):
 
     return [ocrImage(speedCrop), ocrImage(altCrop), ocrImage(timeCrop, True)]
 
+#Annotates the output image with the telemetry
 def annotateOutput(image, ocrResults):
     cv2.rectangle(image, speedBounds[0], speedBounds[1], (0, 255, 0), thickness=2) #Location of Speed - (1, 8), (104, 44)
     cv2.rectangle(image, altBounds[0], altBounds[1], (0, 255, 0), thickness=2) #Location of Altitude - (170, 8), (260, 44)
@@ -72,6 +77,7 @@ def annotateOutput(image, ocrResults):
     cv2.putText(image, ocrResults[1], (altBounds[0][0] + 20, 95), 1, 2, (0, 0, 255), lineType=1, thickness=2)
     cv2.putText(image, ocrResults[2], (timeBounds[0][0] + 20, 95), 1, 2, (0, 0, 255), lineType=1, thickness=2)
 
+#Calculates acceleration from the given data
 def getAcceleration(speeds, times, gap):
     if len(speeds) > gap and len(times) > gap:
         x1 = times[-gap]
@@ -83,6 +89,7 @@ def getAcceleration(speeds, times, gap):
         return abs(round(((y2 - y1) / (x2 - x1)) / 3.6, 1))
     return 0
 
+#Initializes the plots
 def getPlots():
     fig, ax1 = plt.subplots()
     ax2 = ax1.twinx()
@@ -121,6 +128,7 @@ def updatePlot(telemetry, plot):
     plt.draw()
     plt.pause(0.01)
 
+#Extracts the time from the image
 def getTime(timeStr):
     split = timeStr.split(":")
 
@@ -129,7 +137,8 @@ def getTime(timeStr):
 
     return (minutes * 60) + seconds
 
-os.environ["TESSDATA_PREFIX"] = r"E:\Desktop\Programming\Python\F9Telem\tessdata"
+#Path to tessdata directory
+os.environ["TESSDATA_PREFIX"] = r"E:\Desktop\Programming\Python\F9Telem\new\tessdata"
 bounding_box = {'top': 960, 'left': 110, 'width': 3010 - 2030, 'height': 1030 - 969}
 
 speedBounds = [(1, 5), (104, 44)]
@@ -140,10 +149,11 @@ sct = mss()
 
 
 
-
+#Initialize plots and start timer
 startTime = timer()
 plots = getPlots()
 
+#declaring telemetry variables
 allSpeeds = []
 allAlts = []
 allTimes = []
